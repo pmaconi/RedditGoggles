@@ -12,7 +12,7 @@ CREATE TABLE `job` (
   `last_run` datetime DEFAULT NULL,
   `analysis_state` int(11) DEFAULT '0',
   PRIMARY KEY (`job_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2511 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+) ENGINE=InnoDB AUTO_INCREMENT=2511 DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
 -- ----------------------------
 --  Table structure for `submission`
@@ -39,7 +39,7 @@ CREATE TABLE `submission` (
   `score` int(10) NOT NULL,
   `analysis_state` int(10) DEFAULT '0',
   PRIMARY KEY (`submission_id`,`job_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
 -- ----------------------------
 --  Table structure for `submission_score_history`
@@ -53,7 +53,7 @@ CREATE TABLE `submission_score_history` (
   `downs` int(10) NOT NULL,
   `score` int(10) NOT NULL,
   PRIMARY KEY (`submission_id`,`job_id`,`ups`,`downs`,`score`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
 -- ----------------------------
 --  Table structure for `comment`
@@ -71,7 +71,7 @@ CREATE TABLE `comment` (
   `downs` int(10) NOT NULL,
   `analysis_state` int(10) DEFAULT '0',
   PRIMARY KEY (`comment_id`,`job_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
 -- ----------------------------
 --  Table structure for `comment_score_history`
@@ -84,7 +84,7 @@ CREATE TABLE `comment_score_history` (
   `ups` int(10) NOT NULL,
   `downs` int(10) NOT NULL,
   PRIMARY KEY (`comment_id`,`job_id`,`ups`,`downs`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
 -- ----------------------------
 --  Table structure for `history`
@@ -98,4 +98,4 @@ CREATE TABLE `job_history` (
   `status` varchar(7) NOT NULL,
   `total_results` int(10) unsigned zerofill DEFAULT NULL,
   PRIMARY KEY (`history_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=39936178 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+) ENGINE=InnoDB AUTO_INCREMENT=39936178 DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;

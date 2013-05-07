@@ -213,7 +213,7 @@ def parseCommentTree(conn, job_id, submission_id, comment) :
 	success = addComment(conn, job_id, submission_id, comment)
 	if success :
 		addCommentScoreHistory(conn, job_id, comment)
-		
+
 		for reply in comment.replies :
 			parseCommentTree(conn, job_id, submission_id, reply)
 
@@ -235,7 +235,7 @@ if __name__ == '__main__' :
 	# Display startup info
 	print("vvvvv Start:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 	verbose("Verbose Mode: Enabled")
-	#print("Head:", args.head)
+	print("Head:", args.head)
 	print("Delay:", args.delay)
 
 	epoch_min = math.floor(time.time() / 60)
@@ -268,7 +268,7 @@ if __name__ == '__main__' :
 			# Throttle the job frequency
 			if (epoch_min % state != 0) :
 				verbose("Throttled frequency for job: " + str(job_id))
-				#continue
+				continue
 			
 			print("+++++ Job ID:", job_id, "\tQuery:", query, "\tDescription:", description)
 
@@ -293,7 +293,7 @@ if __name__ == '__main__' :
 					submission.replace_more_comments(limit=None, threshold=0)
 					for comment in submission.comments :
 						parseCommentTree(conn, job_id, submission.id, comment)
-
+				
 			addJobHistory(conn, job_id, True, total)
 			updateJobStats(conn, job_id, total)
 
