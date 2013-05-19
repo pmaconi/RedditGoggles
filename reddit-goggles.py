@@ -210,12 +210,21 @@ def updateJobStats(conn, job_id, total_results) :
 
 # Recursively parse all of the comments
 def parseCommentTree(conn, job_id, submission_id, comment) :
+	global comment_count
 	success = addComment(conn, job_id, submission_id, comment)
 	if success :
+		comment_count = comment_count + 1
+		print(comment_count)
 		addCommentScoreHistory(conn, job_id, comment)
 
-		for reply in comment.replies :
-			parseCommentTree(conn, job_id, submission_id, reply)
+		replies = comment.replies
+		while len(replies) > 0 :
+			reply = replies.pop(0)
+
+			if isinstance(reply, praw.objects.MoreComments) :
+				replies.extend(reply.comments())
+			else :
+				parseCommentTree(conn, job_id, submission_id, reply)
 
 # Main function
 if __name__ == '__main__' :
@@ -273,12 +282,13 @@ if __name__ == '__main__' :
 			print("+++++ Job ID:", job_id, "\tQuery:", query, "\tDescription:", description)
 
 			# Convert the generator to a list for progress status
-			submissions = list(r.search(query))
+			submissions = list(r.search(query, limit=0))
 
 			current = 1
 			total = len(submissions)
 
-			for submission in submissions :				
+			for submission in submissions :
+				comment_count = 0
 				# Insert the submission in the DB
 				success = addSubmission(conn, job_id, submission)
 
@@ -290,7 +300,6 @@ if __name__ == '__main__' :
 				if success :
 					addSubmissionScoreHistory(conn, job_id, submission)
 
-					submission.replace_more_comments(limit=None, threshold=0)
 					for comment in submission.comments :
 						parseCommentTree(conn, job_id, submission.id, comment)
 				
