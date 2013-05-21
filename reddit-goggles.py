@@ -2,6 +2,8 @@ import argparse, collections, configparser, json, math, mysql.connector as sql, 
 from datetime import datetime
 from pprint import pprint
 from mysql.connector import errorcode
+from requests import HTTPError
+from requests import ConnectionError
 
 # Print strings in verbose mode
 def verbose(info) :
@@ -59,7 +61,7 @@ def getReplies(reply) :
 	attempt = 1
 	while attempt <= 3 :
 		try :
-			comments = reply.comments()
+			comments = reply.comments(update=False)
 			return comments
 
 		except (ConnectionError, HTTPError) as err :
@@ -69,8 +71,10 @@ def getReplies(reply) :
 			time.sleep(sleep_time)
 			attempt = attempt + 1
 
-	print("***** Error: Unable to query Reddit. Terminating.")
-	sys.exit(1)
+		except (AttributeError, TypeError) :
+			return None
+
+	return None
 
 # Add a submission to the DB
 def addSubmission(conn, job_id, submission) :
@@ -248,22 +252,28 @@ def updateJobStats(conn, job_id, total_results) :
 # Recursively parse all of the comments
 def parseCommentTree(conn, job_id, submission_id, comment) :
 	global submission_count, submission_total, comment_count, comment_total
-	success = addComment(conn, job_id, submission_id, comment)
-	if success :
-		comment_count = comment_count + 1
-		# Show status logging
-		if args.verbose :
-			sys.stdout.write("\rProgress: Submission: {}/{}, Comment: {}/{}".format(submission_count, submission_total, comment_count, comment_total))
-		addCommentScoreHistory(conn, job_id, comment)
 
-		replies = comment.replies
-		while len(replies) > 0 :
-			reply = replies.pop(0)
+	if not isinstance(comment, praw.objects.MoreComments) :		
+		success = addComment(conn, job_id, submission_id, comment)
+		if success :
+			comment_count = comment_count + 1
+			# Show status logging
+			if args.verbose :
+				sys.stdout.write("\rProgress: Submission: {}/{}, Comment: {}/{}".format(submission_count, submission_total, comment_count, comment_total))
+			addCommentScoreHistory(conn, job_id, comment)
 
-			if isinstance(reply, praw.objects.MoreComments) :
-				replies.extend(getReplies(reply))
-			else :
-				parseCommentTree(conn, job_id, submission_id, reply)
+			replies = comment.replies
+			while len(replies) > 0 :
+				reply = replies.pop(0)
+
+				if isinstance(reply, praw.objects.MoreComments) :
+					more_replies = getReplies(reply)
+
+					if more_replies is not None :
+						replies.extend(more_replies)
+				else :
+					parseCommentTree(conn, job_id, submission_id, reply)
+
 
 # Main function
 if __name__ == '__main__' :
