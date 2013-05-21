@@ -35,6 +35,43 @@ def getJobs(conn) :
 	cursor.execute(query,[args.head])
 	return cursor
 
+# Perform search
+def search(r, query) :	
+	# Attempt to reach Reddit
+	attempt = 1
+	while attempt <= 3 :
+		try :
+			submissions = list(r.search(query, limit=None))
+			return submissions
+
+		except (ConnectionError, HTTPError) as err :
+			sleep_time = 2**(attempt - 1)
+			verbose("Connection attempt " + str(attempt) + " failed. "
+				"Sleeping for " + str(sleep_time) + " second(s).")
+			time.sleep(sleep_time)
+			attempt = attempt + 1
+
+	print("***** Error: Unable to query Reddit. Terminating.")
+	sys.exit(1)
+
+# Replace 'MoreComments object'
+def getReplies(reply) :
+	attempt = 1
+	while attempt <= 3 :
+		try :
+			comments = reply.comments()
+			return comments
+
+		except (ConnectionError, HTTPError) as err :
+			sleep_time = 2**(attempt - 1)
+			verbose("Connection attempt " + str(attempt) + " failed. "
+				"Sleeping for " + str(sleep_time) + " second(s).")
+			time.sleep(sleep_time)
+			attempt = attempt + 1
+
+	print("***** Error: Unable to query Reddit. Terminating.")
+	sys.exit(1)
+
 # Add a submission to the DB
 def addSubmission(conn, job_id, submission) :
 	cursor = conn.cursor()
@@ -210,11 +247,13 @@ def updateJobStats(conn, job_id, total_results) :
 
 # Recursively parse all of the comments
 def parseCommentTree(conn, job_id, submission_id, comment) :
-	global comment_count
+	global submission_count, submission_total, comment_count, comment_total
 	success = addComment(conn, job_id, submission_id, comment)
 	if success :
 		comment_count = comment_count + 1
-		print(comment_count)
+		# Show status logging
+		if args.verbose :
+			sys.stdout.write("\rProgress: Submission: {}/{}, Comment: {}/{}".format(submission_count, submission_total, comment_count, comment_total))
 		addCommentScoreHistory(conn, job_id, comment)
 
 		replies = comment.replies
@@ -222,7 +261,7 @@ def parseCommentTree(conn, job_id, submission_id, comment) :
 			reply = replies.pop(0)
 
 			if isinstance(reply, praw.objects.MoreComments) :
-				replies.extend(reply.comments())
+				replies.extend(getReplies(reply))
 			else :
 				parseCommentTree(conn, job_id, submission_id, reply)
 
@@ -281,21 +320,18 @@ if __name__ == '__main__' :
 			
 			print("+++++ Job ID:", job_id, "\tQuery:", query, "\tDescription:", description)
 
-			# Convert the generator to a list for progress status
-			submissions = list(r.search(query, limit=0))
+			submissions = search(r, query)
 
-			current = 1
-			total = len(submissions)
+			submission_count = 0
+			submission_total = len(submissions)
 
 			for submission in submissions :
 				comment_count = 0
 				# Insert the submission in the DB
 				success = addSubmission(conn, job_id, submission)
 
-				# Show status logging
-				if args.verbose :
-					sys.stdout.write("\rProgress: {}/{}".format(current, total))
-				current = current + 1
+				submission_count = submission_count + 1
+				comment_total = submission.num_comments
 
 				if success :
 					addSubmissionScoreHistory(conn, job_id, submission)
@@ -303,12 +339,12 @@ if __name__ == '__main__' :
 					for comment in submission.comments :
 						parseCommentTree(conn, job_id, submission.id, comment)
 				
-			addJobHistory(conn, job_id, True, total)
-			updateJobStats(conn, job_id, total)
+			addJobHistory(conn, job_id, True, submission_total)
+			updateJobStats(conn, job_id, submission_total)
 
 			verbose("")
-			print("Total Results:", total)
-			run_total_count = run_total_count + total
+			print("Total Results:", submission_total)
+			run_total_count = run_total_count + submission_total
 
 	except sql.Error as err :
 		print(err)

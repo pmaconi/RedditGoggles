@@ -30,7 +30,8 @@ pip install mysql-connector-python praw
 	* description: a note to yourself about what this job does, will print in verbose mode 
 	* EXAMPLE:
 ```
-INSERT INTO job (state, zombie_head, query, description) values (1, 1, "white%20house", "Search for submissions mentioning 'white house'");
+INSERT INTO job (state, zombie_head, query, description) 
+VALUES (1, 1, "white%20house", "Search for submissions mentioning 'white house'");
 ```
 
 Usage
@@ -50,14 +51,3 @@ optional arguments:
   -d DELAY, --delay DELAY
 						Delay execution by DELAY seconds
 ```
-
-Unix Cron Example
------------------
-```
-*/1 * * * * /usr/local/bin/python3 /home/reddit-goggles.py -v -d 2 1 >> ~/log/zombielog-head-1-1.txt
-*/1 * * * * /usr/local/bin/python3 /home/reddit-goggles.py -v -d 17 2 >> ~/log/zombie-head-2-1.txt
-*/1 * * * * /usr/local/bin/python3 /home/reddit-goggles.py -v -d 33 3 >> ~/log/zombielog-head-3-1.txt
-*/1 * * * * /usr/local/bin/python3 /home/reddit-goggles.py -v -d 47 4 >> ~/log/zombielog-head-4-1.txt
-```
-
-
