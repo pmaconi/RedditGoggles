@@ -9,7 +9,10 @@ from fcntl import flock, LOCK_EX, LOCK_NB
 # Print strings in verbose mode
 def verbose(info) :
 	if args.verbose:
-		print(info)
+		printUTF8(info)
+
+def printUTF8(info) :
+	print(info.encode('ascii', 'replace').decode())
 
 # Connect to MySQL using config entries
 def connect() :
@@ -30,7 +33,7 @@ def connect() :
 def getJobs(conn) :
 	cursor = conn.cursor() 
 
-	query = ("SELECT job_id, zombie_head, state, query, description \
+	query = ("SELECT job_id, zombie_head, state, query, description, submission_cooldown_seconds \
 			FROM job \
 			WHERE job.state > 0 AND zombie_head = %s \
 			ORDER BY job_id")
@@ -113,8 +116,7 @@ def addSubmission(conn, job_id, submission) :
 	except sql.Error as err :
 		verbose("")
 		verbose(">>>> Warning: Could not add Submission: " + str(err))
-		# Convert unprintable utf8 strings to ascii bytes and decode back to a string
-		verbose("     Query: " + cursor.statement.encode("ascii", "ignore").decode())
+		verbose("     Query: " + cursor.statement)
 		return False
 	finally :
 		cursor.close()
@@ -140,9 +142,55 @@ def addSubmissionScoreHistory(conn, job_id, submission) :
 	except sql.Error as err :
 		verbose("")
 		verbose(">>>> Warning: Could not add Submission score history: " + str(err))
-		# Convert unprintable utf8 strings to ascii bytes and decode back to a string
-		verbose("     Query: " + cursor.statement.encode("ascii", "ignore").decode())
+		verbose("     Query: " + cursor.statement)
 	finally :
+		cursor.close()
+
+# Get the submission's last run time
+def getSubmissionRunTime(conn, job_id, submission_id) :
+	cursor = conn.cursor()
+
+	query = "SELECT last_run FROM submission WHERE job_id=%s AND submission_id=%s LIMIT 1"
+
+	values = [
+		job_id,
+		submission_id
+	]
+
+	try :
+		cursor.execute(query, values)
+
+		for(last_run) in cursor :
+			if (last_run[0] is not None) :
+				return last_run[0]
+
+		return -1
+
+	except sql.Error as err :
+		verbose(">>>> Warning: Could not get the submission last run time: " + str(err))
+		verbose("     Query: " + cursor.statement)
+	finally:
+		cursor.close()
+
+# Update the submission's last run time
+def updateSubmissionRunTime(conn, job_id, submission_id) :
+	cursor = conn.cursor()
+
+	query = "UPDATE submission SET last_run=%s WHERE job_id=%s AND submission_id=%s"
+
+	values = [
+		datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+		job_id,
+		submission_id
+	]
+
+	try :
+		cursor.execute(query, values)
+		conn.commit()
+	except sql.Error as err :
+		verbose(">>>> Warning: Could not update submission run time: " + str(err))
+		verbose("     Query: " + cursor.statement)
+	finally:
 		cursor.close()
 
 # Add a comment to the DB
@@ -172,8 +220,7 @@ def addComment(conn, job_id, submission_id, comment) :
 	except sql.Error as err :
 		verbose("")
 		verbose(">>>> Warning: Could not add Comment: " + str(err))
-		# Convert unprintable utf8 strings to ascii bytes and decode back to a string
-		verbose("     Query: " + cursor.statement.encode("ascii", "ignore").decode())
+		verbose("     Query: " + cursor.statement)
 		return False
 	finally :
 		cursor.close()
@@ -198,8 +245,7 @@ def addCommentScoreHistory(conn, job_id, comment) :
 	except sql.Error as err :
 		verbose("")
 		verbose(">>>> Warning: Could not add Submission score history: " + str(err))
-		# Convert unprintable utf8 strings to ascii bytes and decode back to a string
-		verbose("     Query: " + cursor.statement.encode("ascii", "ignore").decode())
+		verbose("     Query: " + cursor.statement)
 	finally :
 		cursor.close()
 
@@ -223,8 +269,7 @@ def addJobHistory(conn, job_id, success, total_results = 0) :
 		conn.commit()
 	except sql.Error as err :
 		verbose(">>>> Warning: Could not add job_history entry: " + str(err))
-		# Convert unprintable utf8 strings to ascii bytes and decode back to a string
-		verbose("     Query: " + cursor.statement.encode("ascii", "ignore").decode())
+		verbose("     Query: " + cursor.statement)
 	finally:
 		cursor.close()
 
@@ -245,8 +290,7 @@ def updateJobStats(conn, job_id, total_results) :
 		conn.commit()
 	except sql.Error as err :
 		verbose(">>>> Warning: Could not update job: " + str(err))
-		# Convert unprintable utf8 strings to ascii bytes and decode back to a string
-		verbose("     Query: " + cursor.statement.encode("ascii", "ignore").decode())
+		verbose("     Query: " + cursor.statement)
 	finally:
 		cursor.close()
 
@@ -297,7 +341,6 @@ if __name__ == '__main__' :
 		flock(lock, LOCK_EX | LOCK_NB)
 	except IOError :
 		print("Unable to lock file", config["Misc"]["lockfile"] + ".","Terminating.")
-		print("^^^^^ Stop:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 		sys.exit(1)
 
 	# Display startup info
@@ -305,9 +348,6 @@ if __name__ == '__main__' :
 	verbose("Verbose Mode: Enabled")
 	print("Head:", args.head)
 	print("Delay:", args.delay)
-
-	epoch_min = math.floor(time.time() / 60)
-	verbose("Epoch Minutes: " + str(epoch_min))
 
 	if (args.delay > 0) :
 		time.sleep(args.delay)
@@ -331,14 +371,8 @@ if __name__ == '__main__' :
 		r = praw.Reddit(user_agent = config["Reddit"]["user-agent"])
 
 		# Iterate over all of the jobs found
-		for (job_id, zombie_head, state, query, description) in jobs :
-			
-			# Throttle the job frequency
-			if (epoch_min % state != 0) :
-				verbose("Throttled frequency for job: " + str(job_id))
-				continue
-			
-			print("+++++ Job ID:", job_id, "\tQuery:", query, "\tDescription:", description)
+		for (job_id, zombie_head, state, query, description, submission_cooldown_seconds) in jobs :
+			printUTF8("+++++ Job ID:" + str(job_id) + "\tQuery:" + query + "\tDescription:" + description)
 
 			submissions = search(r, query)
 
@@ -346,6 +380,13 @@ if __name__ == '__main__' :
 			submission_total = len(submissions)
 
 			for submission in submissions :
+				last_run = getSubmissionRunTime(conn, job_id, submission.id)
+
+				if (last_run != -1 and (datetime.now() - last_run).total_seconds() < submission_cooldown_seconds) :
+					print("Skipping submission id", submission.id, "because it has been parsed in the past", submission_cooldown_seconds, "second(s).")
+					submission_count = submission_count + 1
+					continue
+
 				comment_count = 0
 				# Insert the submission in the DB
 				success = addSubmission(conn, job_id, submission)
@@ -358,6 +399,8 @@ if __name__ == '__main__' :
 
 					for comment in submission.comments :
 						parseCommentTree(conn, job_id, submission.id, comment)
+
+					updateSubmissionRunTime(conn, job_id, submission.id)
 				
 			addJobHistory(conn, job_id, True, submission_total)
 			updateJobStats(conn, job_id, submission_total)

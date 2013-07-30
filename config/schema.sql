@@ -10,6 +10,7 @@ CREATE TABLE `job` (
   `description` varchar(255) DEFAULT 'I am a lazy piece of shit and I did not enter a description',
   `last_count` int(10) unsigned zerofill DEFAULT NULL,
   `last_run` datetime DEFAULT NULL,
+  `submission_cooldown_seconds` int DEFAULT 3600,
   `analysis_state` int(11) DEFAULT '0',
   PRIMARY KEY (`job_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2511 DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
@@ -38,6 +39,7 @@ CREATE TABLE `submission` (
   `downs` int(10) NOT NULL,
   `score` int(10) NOT NULL,
   `analysis_state` int(10) DEFAULT '0',
+  `last_run` datetime DEFAULT NULL,
   PRIMARY KEY (`submission_id`,`job_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
