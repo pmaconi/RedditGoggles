@@ -4,6 +4,7 @@ from pprint import pprint
 from mysql.connector import errorcode
 from requests import HTTPError
 from requests import ConnectionError
+from fcntl import flock, LOCK_EX, LOCK_NB
 
 # Print strings in verbose mode
 def verbose(info) :
@@ -289,6 +290,15 @@ if __name__ == '__main__' :
 	script_dir = os.path.dirname(__file__)
 	config_file = os.path.join(script_dir, 'config/settings.cfg')
 	config.read(config_file)
+
+	# Handle file locking
+	lock = open(config["Misc"]["lockfile"], 'a')
+	try :
+		flock(lock, LOCK_EX | LOCK_NB)
+	except IOError :
+		print("Unable to lock file", config["Misc"]["lockfile"] + ".","Terminating.")
+		print("^^^^^ Stop:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+		sys.exit(1)
 
 	# Display startup info
 	print("vvvvv Start:", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
