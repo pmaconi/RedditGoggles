@@ -234,7 +234,7 @@ def addCommentScoreHistory(conn, job_id, comment) :
 	values = [
 		job_id,
 		comment.id,
-		datetime.fromtimestamp(comment.created_utc).strftime('%Y-%m-%d %H:%M:%S'),
+		datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
 		comment.ups,
 		comment.downs
 	]
