@@ -61,11 +61,11 @@ def search(r, query) :
 	sys.exit(1)
 
 # Replace 'MoreComments object'
-def getReplies(reply) :
+def getComments(comment) :
 	attempt = 1
 	while attempt <= 3 :
 		try :
-			comments = reply.comments(update=False)
+			comments = comment.comments(update=False)
 			return comments
 
 		except (ConnectionError, HTTPError) as err :
@@ -298,27 +298,27 @@ def updateJobStats(conn, job_id, total_results) :
 def parseCommentTree(conn, job_id, submission_id, comment) :
 	global submission_count, submission_total, comment_count, comment_total
 
-	if not isinstance(comment, praw.objects.MoreComments) :		
-		success = addComment(conn, job_id, submission_id, comment)
-		if success :
-			comment_count = comment_count + 1
-			# Show status logging
-			if args.verbose :
-				sys.stdout.write("\rProgress: Submission: {}/{}, Comment: {}/{}".format(submission_count, submission_total, comment_count, comment_total))
-			addCommentScoreHistory(conn, job_id, comment)
+	queue = collections.deque()
+	queue.append(comment)
+	while len(queue) > 0:
+		next = queue.popleft();
+		if isinstance(next, praw.objects.MoreComments) :
+			more_comments = getComments(next)
 
-			replies = comment.replies
-			while len(replies) > 0 :
-				reply = replies.pop(0)
+			if more_comments is not None :
+				queue.extendright(more_comments)
+		else :
+			success = addComment(conn, job_id, submission_id, next)
+			if success :
+				comment_count = comment_count + 1
 
-				if isinstance(reply, praw.objects.MoreComments) :
-					more_replies = getReplies(reply)
+				# Show status logging
+				if args.verbose :
+					sys.stdout.write("\rProgress: Submission: {}/{}, Comment: {}/{}".format(submission_count, submission_total, comment_count, comment_total))
+				
+				addCommentScoreHistory(conn, job_id, comment)
 
-					if more_replies is not None :
-						replies.extend(more_replies)
-				else :
-					parseCommentTree(conn, job_id, submission_id, reply)
-
+				queue.extendleft(next.replies)
 
 # Main function
 if __name__ == '__main__' :
