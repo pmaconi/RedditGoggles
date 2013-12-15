@@ -316,7 +316,7 @@ def parseCommentTree(conn, job_id, submission_id, comment) :
 				if args.verbose :
 					sys.stdout.write("\rProgress: Submission: {}/{}, Comment: {}/{}".format(submission_count, submission_total, comment_count, comment_total))
 				
-				addCommentScoreHistory(conn, job_id, comment)
+				addCommentScoreHistory(conn, job_id, next)
 
 				queue.extendleft(next.replies)
 
