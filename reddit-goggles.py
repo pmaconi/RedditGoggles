@@ -306,7 +306,7 @@ def parseCommentTree(conn, job_id, submission_id, comment) :
 			more_comments = getComments(next)
 
 			if more_comments is not None :
-				queue.extendright(more_comments)
+				queue.extend(more_comments)
 		else :
 			success = addComment(conn, job_id, submission_id, next)
 			if success :

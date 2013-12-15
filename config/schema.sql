@@ -72,7 +72,7 @@ CREATE TABLE `comment` (
   `ups` int(10) NOT NULL,
   `downs` int(10) NOT NULL,
   `analysis_state` int(10) DEFAULT '0',
-  PRIMARY KEY (`comment_id`,`job_id`)
+  PRIMARY KEY (`comment_id`, `submission_id`, `job_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 ROW_FORMAT=COMPACT;
 
 -- ----------------------------
