@@ -306,7 +306,7 @@ def parseCommentTree(conn, job_id, submission_id, comment) :
 			more_comments = getComments(next)
 
 			if more_comments is not None :
-				queue.extend(more_comments)
+				queue.extendleft(more_comments)
 		else :
 			success = addComment(conn, job_id, submission_id, next)
 			if success :
@@ -318,7 +318,7 @@ def parseCommentTree(conn, job_id, submission_id, comment) :
 				
 				addCommentScoreHistory(conn, job_id, next)
 
-				queue.extendleft(next.replies)
+				queue.extend(next.replies)
 
 # Main function
 if __name__ == '__main__' :
